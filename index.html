@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام حسابات شركة قمر الخليج - سحابي</title>
+    <title>نظام حسابات شركة قمر الخليج</title>
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -27,7 +27,8 @@
 
         // دالة المزامنة الشاملة مع جوجل شيت (إضافة، تعديل، حذف)
         async function syncWithSheets(entryData, id, action) {
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbzsBpT-IzezHDgpthcUxvdNlLYc-YKOLmRksEB9MrcnZu7u9V6PwnUrtDchTsOW6amyrA/exec';
+            // تحديث الرابط الجديد هنا
+            const scriptURL = 'https://script.google.com/macros/s/AKfycbzp1UmoUxnt2-VIPaBCLgaZ7myl2mRDo2flAhB4LMEdrAt-FqBFfypHijXt6nmWcvv8Ug/exec';
             const payload = { ...entryData, id: id, action: action };
             
             try {
