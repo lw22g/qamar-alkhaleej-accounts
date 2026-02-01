@@ -2,248 +2,299 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>نظام حسابات شركة قمر الخليج</title>
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>تحت الصيانة | Under Maintenance</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCjlwkV9u7wFWtjhKZSeACtU5DTAbMZois",
-            authDomain: "qamar-system.firebaseapp.com",
-            databaseURL: "https://qamar-system-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "qamar-system",
-            storageBucket: "qamar-system.firebasestorage.app",
-            messagingSenderId: "409311893648",
-            appId: "1:409311893648:web:a56b3d46ad6be716312015",
-            measurementId: "G-YCEMSWFX66"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const dbRef = ref(db, 'transactions');
-
-        // دالة المزامنة الشاملة مع جوجل شيت (إضافة، تعديل، حذف)
-        async function syncWithSheets(entryData, id, action) {
-            // تحديث الرابط الجديد هنا
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbzp1UmoUxnt2-VIPaBCLgaZ7myl2mRDo2flAhB4LMEdrAt-FqBFfypHijXt6nmWcvv8Ug/exec';
-            const payload = { ...entryData, id: id, action: action };
-            
-            try {
-                await fetch(scriptURL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-                console.log(`تمت مزامنة العملية (${action}) بنجاح`);
-            } catch (error) {
-                console.error("خطأ في المزامنة:", error);
-            }
-        }
-
-        window.processEntry = function() {
-            const desc = document.getElementById('desc').value;
-            let amount = parseFloat(document.getElementById('amount').value);
-            const currency = document.getElementById('currency').value;
-            const type = document.getElementById('type').value;
-            const method = document.getElementById('method').value;
-            const employee = document.getElementById('employee').value;
-            const date = new Date().toLocaleDateString('ar-EG');
-
-            if (!desc || isNaN(amount)) return alert("أكمل البيانات أولاً عيني");
-            
-            let finalAmount = (currency === "IQD") ? amount * 1000 : amount;
-            const entryData = { date, desc, type, method, amount: finalAmount, currency, employee };
-
-            if (window.editKey) {
-                // حالة التعديل
-                update(ref(db, 'transactions/' + window.editKey), entryData);
-                syncWithSheets(entryData, window.editKey, "edit");
-                window.editKey = null;
-                document.getElementById('submitBtn').innerText = "إضافة العملية";
-                document.getElementById('submitBtn').classList.remove('update-mode');
-            } else {
-                // حالة الإضافة
-                const newRef = push(dbRef, entryData);
-                syncWithSheets(entryData, newRef.key, "add");
-            }
-
-            document.getElementById('desc').value = "";
-            document.getElementById('amount').value = "";
-        };
-
-        onValue(dbRef, (snapshot) => {
-            renderAll(snapshot.val());
-        });
-
-        window.deleteEntry = function(id) {
-            if(confirm("تريد تحذف هاي العملية؟")) {
-                syncWithSheets({ date: "", desc: "", employee: "", type: "", method: "", amount: 0, currency: "" }, id, "delete");
-                remove(ref(db, 'transactions/' + id));
-            }
-        };
-
-        window.editEntry = function(id, dataStr) {
-            const itm = JSON.parse(decodeURIComponent(dataStr));
-            window.editKey = id;
-            document.getElementById('desc').value = itm.desc;
-            document.getElementById('amount').value = itm.currency === "IQD" ? itm.amount / 1000 : itm.amount;
-            document.getElementById('currency').value = itm.currency;
-            document.getElementById('type').value = itm.type;
-            document.getElementById('method').value = itm.method;
-            document.getElementById('employee').value = itm.employee || "هند";
-            const btn = document.getElementById('submitBtn');
-            btn.innerText = "تعديل العملية الحالية";
-            btn.classList.add('update-mode');
-            window.scrollTo(0, 0);
-        };
-
-        window.clearAllData = function() {
-            if(confirm("تحذير: هل تريد مسح كل البيانات وتصفير السجل نهائياً؟")) remove(dbRef);
-        };
-
-        window.printReport = function() {
-            const now = new Date();
-            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
-            document.getElementById('printDateDisplay').innerText = now.toLocaleDateString('ar-EG', options);
-            window.print();
-        };
-
-        function renderAll(data) {
-            const body = document.getElementById('tableBody');
-            body.innerHTML = "";
-            let inIQD = 0, outIQD = 0, unpIQD = 0, inUSD = 0, outUSD = 0, unpUSD = 0;
-
-            if (data) {
-                Object.keys(data).forEach((id) => {
-                    const item = data[id];
-                    const isUnpaid = item.method === "غير واصل";
-                    const itemData = encodeURIComponent(JSON.stringify(item));
-
-                    body.innerHTML += `<tr>
-                        <td>${item.date}</td>
-                        <td>${item.employee || '-'}</td>
-                        <td>${item.desc}</td>
-                        <td class="${item.type === 'وارد' ? 'text-in' : 'text-out'}">${item.type}</td>
-                        <td class="${isUnpaid ? 'text-unpaid' : ''}">${item.method}</td>
-                        <td>${item.amount.toLocaleString()}</td>
-                        <td>${item.currency === 'IQD' ? 'دينار' : 'دولار'}</td>
-                        <td class="delete-column">
-                            <div class="action-btns">
-                                <button class="edit-btn" onclick="editEntry('${id}', '${itemData}')">تعديل</button>
-                                <button class="delete-btn" onclick="deleteEntry('${id}')">حذف</button>
-                            </div>
-                        </td>
-                    </tr>`;
-
-                    if (item.currency === "IQD") {
-                        if (isUnpaid) unpIQD += item.amount;
-                        else (item.type === "وارد" ? inIQD += item.amount : outIQD += item.amount);
-                    } else {
-                        if (isUnpaid) unpUSD += item.amount;
-                        else (item.type === "وارد" ? inUSD += item.amount : outUSD += item.amount);
-                    }
-                });
-            }
-            document.getElementById('totalInIQD').innerText = inIQD.toLocaleString();
-            document.getElementById('totalOutIQD').innerText = outIQD.toLocaleString();
-            document.getElementById('netIQD').innerText = (inIQD - outIQD).toLocaleString();
-            document.getElementById('unpaidIQD').innerText = unpIQD.toLocaleString();
-
-            document.getElementById('totalInUSD').innerText = inUSD.toLocaleString();
-            document.getElementById('totalOutUSD').innerText = outUSD.toLocaleString();
-            document.getElementById('netUSD').innerText = (inUSD - outUSD).toLocaleString();
-            document.getElementById('unpaidUSD').innerText = unpUSD.toLocaleString();
-        }
-    </script>
-
     <style>
-        :root { --royal-green: #004d40; --faded-green: #e0f2f1; --gold: #d4af37; --red-action: #c62828; }
-        * { box-sizing: border-box; }
-        body { font-family: 'Cairo', sans-serif; background-color: #f0f4f3; margin: 0; padding: 20px; color: #333; direction: rtl; }
-        .container { max-width: 1200px; margin: auto; background: white; padding: 30px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.1); border-top: 10px solid var(--royal-green); }
-        .print-header-top { display: none; }
-        h2.ui-title { text-align: center; color: var(--royal-green); font-weight: 700; margin-bottom: 25px; }
-        .input-section { background: var(--faded-green); padding: 20px; border-radius: 10px; display: grid; grid-template-columns: 1fr 2fr 1fr 1fr 1fr 1fr auto; gap: 10px; border: 1px solid #b2dfdb; margin-bottom: 25px; }
-        input, select, button { font-family: 'Cairo', sans-serif; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
-        .add-btn { background-color: var(--royal-green); color: white; border: none; cursor: pointer; font-weight: 700; }
-        .update-mode { background-color: #1976d2 !important; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
-        th, td { border: 1px solid #ccc; padding: 12px; text-align: center; font-size: 14px; }
-        th { background-color: var(--royal-green); color: white; font-weight: 700; }
-        .text-in { color: #2e7d32; font-weight: 700; }
-        .text-out { color: #c62828; font-weight: 700; }
-        .text-unpaid { color: #f39c12; font-weight: 700; }
-        .action-btns { display: flex; gap: 5px; justify-content: center; }
-        .edit-btn { background: #e3f2fd; color: #1976d2; border: 1px solid #bbdefb; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
-        .delete-btn { background: #ffeded; color: #d32f2f; border: 1px solid #ffcdd2; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
-        .summary-table { width: 100%; border: 3px solid var(--royal-green); margin-top: 30px; }
-        .summary-table th, .summary-table td { border: 2px solid var(--royal-green); padding: 10px; font-weight: 700; }
-        .controls { display: flex; justify-content: center; gap: 20px; margin-top: 35px; }
-        .btn-print { padding: 12px 45px; background: var(--gold); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 17px; }
-        .btn-clear { padding: 12px 45px; background: var(--red-action); color: white; border: none; border-radius: 8px; font-weight: 700; cursor: pointer; font-size: 17px; }
+        :root {
+            --primary-color: #0ea5e9; /* Sky Blue */
+            --secondary-color: #6366f1; /* Indigo */
+            --accent-glow: rgba(14, 165, 233, 0.5);
+            --bg-dark: #020617;
+            --glass-bg: rgba(15, 23, 42, 0.7); /* زيادة العتامة قليلاً للقراءة */
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --telegram-bg: linear-gradient(135deg, #2AABEE 0%, #229ED9 100%);
+        }
 
-        @media print {
-            @page { size: A4; margin: 1.5cm; }
-            body { background: white; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .container { box-shadow: none; border: none; width: 100%; padding: 0; }
-            .input-section, .controls, .delete-column, .ui-title, .action-btns { display: none !important; }
-            .print-header-top { display: flex !important; flex-direction: column; align-items: center; margin-bottom: 30px; border-bottom: 2px double var(--royal-green); padding-bottom: 15px; }
-            .print-header-top h1 { color: var(--royal-green); margin: 0; font-size: 28px; }
-            .print-header-top p { margin: 5px 0; font-weight: 600; color: #555; }
-            table { border: 1px solid #000 !important; }
-            th { background-color: var(--royal-green) !important; color: white !important; font-size: 15px; }
-            td { border: 1px solid #000 !important; font-size: 14px; }
-            .summary-table { margin-top: 40px; page-break-inside: avoid; }
-            .summary-table th { background-color: #eee !important; color: #000 !important; border: 1px solid #000 !important; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+            -webkit-tap-highlight-color: transparent; /* إزالة لون النقر الافتراضي في الجوال */
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            /* السماح بالتمرير العمودي عند الحاجة ومنع الأفقي */
+            overflow-x: hidden;
+            overflow-y: auto; 
+            position: relative;
+            padding: 20px; /* مسافة أمان للجوال */
+        }
+
+        /* Vignette Effect */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 0%, #020617 90%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        /* Background Circles */
+        .glow-spot {
+            position: fixed; /* تغيير إلى fixed لتبقى في الخلفية عند التمرير */
+            border-radius: 50%;
+            filter: blur(80px); /* تخفيف البلور قليلاً للأداء */
+            z-index: -2;
+            opacity: 0.5;
+            animation: float-bg 10s ease-in-out infinite alternate;
+        }
+        .g1 { width: 50vw; height: 50vw; max-width: 500px; max-height: 500px; background: var(--secondary-color); top: -10%; left: -10%; opacity: 0.25; }
+        .g2 { width: 40vw; height: 40vw; max-width: 400px; max-height: 400px; background: var(--primary-color); bottom: -10%; right: -10%; opacity: 0.2; }
+
+        .container {
+            text-align: center;
+            padding: 50px 30px;
+            width: 100%;
+            max-width: 500px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-top: 1px solid rgba(255,255,255,0.15);
+            border-radius: 24px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                inset 0 0 20px rgba(255,255,255,0.02);
+            position: relative;
+            animation: card-entry 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+            margin: auto;
+        }
+
+        /* Icon Styles */
+        .icon-box {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main-gear {
+            font-size: clamp(60px, 15vw, 80px); /* حجم متغير */
+            background: linear-gradient(to bottom, #fff, #94a3b8);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px var(--accent-glow));
+            animation: spin 12s linear infinite;
+        }
+
+        .small-gear {
+            font-size: clamp(30px, 8vw, 40px);
+            color: var(--secondary-color);
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            filter: drop-shadow(0 0 10px rgba(99, 102, 241, 0.6));
+            animation: spin-reverse 8s linear infinite;
+        }
+
+        h1 {
+            /* حجم خط ذكي يتناسب مع عرض الشاشة */
+            font-size: clamp(1.5rem, 5vw, 2.2rem); 
+            margin-bottom: 15px;
+            font-weight: 800;
+            background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            line-height: 1.2;
+        }
+
+        p {
+            font-size: clamp(0.95rem, 3vw, 1.1rem);
+            color: #94a3b8;
+            margin-bottom: 30px;
+            line-height: 1.6;
+            font-weight: 300;
+            padding: 0 10px;
+        }
+
+        /* Loader */
+        .loader-wrapper {
+            width: 100%;
+            height: 5px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 35px;
+            position: relative;
+        }
+
+        .loader-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 40%;
+            background: linear-gradient(90deg, transparent, var(--primary-color), var(--secondary-color));
+            border-radius: 10px;
+            animation: loading-scan 2.5s ease-in-out infinite;
+            box-shadow: 0 0 10px var(--primary-color);
+        }
+
+        /* Social Area */
+        .social-area {
+            border-top: 1px solid var(--glass-border);
+            padding-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(14, 165, 233, 0.1);
+            color: var(--primary-color);
+            padding: 6px 14px;
+            border-radius: 50px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            margin-bottom: 15px;
+        }
+
+        .telegram-btn {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            background: var(--telegram-bg);
+            color: white;
+            padding: 14px 20px;
+            border-radius: 14px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1rem;
+            transition: transform 0.2s, box-shadow 0.2s;
+            overflow: hidden;
+            box-shadow: 0 8px 20px -5px rgba(34, 158, 217, 0.4);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        /* تأثير الضغط على الزر في الجوال */
+        .telegram-btn:active {
+            transform: scale(0.98);
+        }
+
+        .telegram-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -8px rgba(34, 158, 217, 0.5);
+        }
+
+        .telegram-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
+            transition: 0.5s;
+        }
+
+        .telegram-btn:hover::before {
+            left: 100%;
+        }
+
+        /* Animations */
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+        @keyframes spin-reverse { 100% { transform: rotate(-360deg); } }
+        
+        @keyframes loading-scan {
+            0% { left: -50%; width: 30%; opacity: 0.5; }
+            50% { width: 60%; opacity: 1; }
+            100% { left: 110%; width: 30%; opacity: 0.5; }
+        }
+
+        @keyframes card-entry {
+            0% { opacity: 0; transform: translateY(20px) scale(0.96); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes float-bg {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(15px, 15px); }
+        }
+
+        /* Media Queries للتجاوب الدقيق */
+        
+        /* الهواتف الصغيرة جداً (مثل iPhone SE القديم) */
+        @media (max-width: 380px) {
+            .container { padding: 35px 20px; }
+            h1 { font-size: 1.5rem; }
+            .telegram-btn { padding: 12px 15px; font-size: 0.95rem; }
+            .icon-box { width: 80px; height: 80px; margin-bottom: 20px; }
+        }
+
+        /* الوضع الأفقي للهواتف (Landscape) */
+        @media (max-height: 500px) and (orientation: landscape) {
+            body { padding: 10px; align-items: flex-start; } /* يمنع قص المحتوى */
+            .container { margin-top: 20px; margin-bottom: 20px; padding: 30px 20px; }
+            .icon-box { width: 70px; height: 70px; margin-bottom: 15px; }
+            h1 { margin-bottom: 10px; }
+            p { margin-bottom: 20px; }
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="print-header-top">
-        <h1>شركة قمر الخليج للسفر والسياحة</h1>
-        <p>تقرير الحسابات اليومي</p>
-        <p id="printDateDisplay"></p>
+
+    <div class="glow-spot g1"></div>
+    <div class="glow-spot g2"></div>
+
+    <div class="container">
+        
+        <div class="icon-box">
+            <i class="fas fa-cog main-gear"></i>
+            <i class="fas fa-microchip small-gear"></i>
+        </div>
+        
+        <span class="status-badge">
+            <i class="fas fa-circle-notch fa-spin"></i> جاري العمل على التحسينات
+        </span>
+
+        <h1>الموقع قيد التطوير</h1>
+        <p>نقوم حالياً بترقية النظام لتقديم تجربة مستخدم استثنائية. شكراً لصبركم، سنعود قريباً.</p>
+
+        <div class="loader-wrapper">
+            <div class="loader-bar"></div>
+        </div>
+
+        <div class="social-area">
+            <a href="https://t.me/lw22g" target="_blank" class="telegram-btn">
+                <i class="fab fa-telegram-plane"></i>
+                <span>تواصل معنا عبر تليجرام</span>
+            </a>
+        </div>
     </div>
-    <h2 class="ui-title">التقرير اليومي لحسابات شركة قمر الخليج</h2>
-    <div class="input-section">
-        <select id="employee">
-            <option value="هند">هند</option>
-            <option value="غيث">غيث</option>
-            <option value="يونس">يونس</option>
-            <option value="نبأ">نبأ</option>
-        </select>
-        <input type="text" id="desc" placeholder=" وصف العملية ">
-        <input type="number" id="amount" placeholder="المبلغ">
-        <select id="currency"><option value="IQD">د.ع</option><option value="USD">دولار $</option></select>
-        <select id="type"><option value="وارد">وارد</option><option value="صادر">صادر</option></select>
-        <select id="method"><option value="كاش">كاش</option><option value="ماستر كارد">ماستر كارد</option><option value="زين كاش">زين كاش</option><option value="غير واصل">غير واصل</option></select>
-        <button class="add-btn" id="submitBtn" onclick="processEntry()">إضافة العملية</button>
-    </div>
-    <table>
-        <thead>
-            <tr><th>التاريخ</th><th>الموظف</th><th>الوصف</th><th>النوع</th><th>الطريقة</th><th>المبلغ</th><th>العملة</th><th class="delete-column">إجراء</th></tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
-    </table>
-    <table class="summary-table">
-        <thead>
-            <tr><th colspan="5">الخلاصة المالية النهائية</th></tr>
-            <tr><th>العملة</th><th>إجمالي الوارد</th><th>إجمالي الصادر</th><th>الصافي (الكاش)</th><th>غير واصل (دين)</th></tr>
-        </thead>
-        <tbody>
-            <tr><td>دينار عراقي</td><td id="totalInIQD" class="text-in">0</td><td id="totalOutIQD" class="text-out">0</td><td id="netIQD">0</td><td id="unpaidIQD" class="text-unpaid">0</td></tr>
-            <tr><td>دولار أمريكي</td><td id="totalInUSD" class="text-in">0</td><td id="totalOutUSD" class="text-out">0</td><td id="netUSD">0</td><td id="unpaidUSD" class="text-unpaid">0</td></tr>
-        </tbody>
-    </table>
-    <div class="controls">
-        <button class="btn-print" onclick="printReport()">طـبـاعـة التقرير</button>
-        <button class="btn-clear" onclick="clearAllData()">تصفير السحابة</button>
-    </div>
-</div>
+
 </body>
 </html>
