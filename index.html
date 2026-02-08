@@ -112,7 +112,6 @@
             const body = document.getElementById('tableBody');
             body.innerHTML = "";
             
-            // متغيرات الحساب
             let inIQD = 0, outIQD = 0, unpIQD = 0, mstIQD = 0, znIQD = 0;
             let inUSD = 0, outUSD = 0, unpUSD = 0, mstUSD = 0, znUSD = 0;
 
@@ -120,6 +119,7 @@
                 Object.keys(data).forEach((id) => {
                     const item = data[id];
                     const isUnpaid = item.method === "غير واصل";
+                    const isPrepaid = item.method === "واصل مسبقاً";
                     const isMaster = item.method === "ماستر كارد";
                     const isZain = item.method === "زين كاش";
                     const itemData = encodeURIComponent(JSON.stringify(item));
@@ -129,7 +129,7 @@
                         <td>${item.employee || '-'}</td>
                         <td>${item.desc}</td>
                         <td class="${item.type === 'وارد' ? 'text-in' : 'text-out'}">${item.type}</td>
-                        <td class="${isUnpaid ? 'text-unpaid' : ''}">${item.method}</td>
+                        <td class="${isUnpaid ? 'text-unpaid' : (isPrepaid ? 'text-prepaid' : '')}">${item.method}</td>
                         <td>${item.amount.toLocaleString()}</td>
                         <td>${item.currency === 'IQD' ? 'دينار' : 'دولار'}</td>
                         <td class="delete-column">
@@ -140,26 +140,29 @@
                         </td>
                     </tr>`;
 
-                    if (item.currency === "IQD") {
-                        if (isUnpaid) unpIQD += item.amount;
-                        else {
-                            let val = (item.type === "وارد" ? item.amount : -item.amount);
-                            if (item.type === "وارد") inIQD += item.amount; else outIQD += item.amount;
-                            if (isMaster) mstIQD += val;
-                            if (isZain) znIQD += val;
-                        }
-                    } else {
-                        if (isUnpaid) unpUSD += item.amount;
-                        else {
-                            let val = (item.type === "وارد" ? item.amount : -item.amount);
-                            if (item.type === "وارد") inUSD += item.amount; else outUSD += item.amount;
-                            if (isMaster) mstUSD += val;
-                            if (isZain) znUSD += val;
+                    // إذا كانت العملية "واصل مسبقاً"، لا تدخل في حسابات الوارد والصافي
+                    if (!isPrepaid) {
+                        if (item.currency === "IQD") {
+                            if (isUnpaid) unpIQD += item.amount;
+                            else {
+                                let val = (item.type === "وارد" ? item.amount : -item.amount);
+                                if (item.type === "وارد") inIQD += item.amount; else outIQD += item.amount;
+                                if (isMaster) mstIQD += val;
+                                if (isZain) znIQD += val;
+                            }
+                        } else {
+                            if (isUnpaid) unpUSD += item.amount;
+                            else {
+                                let val = (item.type === "وارد" ? item.amount : -item.amount);
+                                if (item.type === "وارد") inUSD += item.amount; else outUSD += item.amount;
+                                if (isMaster) mstUSD += val;
+                                if (isZain) znUSD += val;
+                            }
                         }
                     }
                 });
             }
-            // تحديث واجهة الخلاصة
+            
             document.getElementById('totalInIQD').innerText = inIQD.toLocaleString();
             document.getElementById('totalOutIQD').innerText = outIQD.toLocaleString();
             document.getElementById('netIQD').innerText = (inIQD - outIQD).toLocaleString();
@@ -193,6 +196,7 @@
         .text-in { color: #2e7d32; font-weight: 700; }
         .text-out { color: #c62828; font-weight: 700; }
         .text-unpaid { color: #f39c12; font-weight: 700; }
+        .text-prepaid { color: #607d8b; font-weight: 700; font-style: italic; }
         .action-btns { display: flex; gap: 5px; justify-content: center; }
         .edit-btn { background: #e3f2fd; color: #1976d2; border: 1px solid #bbdefb; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
         .delete-btn { background: #ffeded; color: #d32f2f; border: 1px solid #ffcdd2; cursor: pointer; padding: 4px 8px; border-radius: 4px; }
@@ -237,7 +241,13 @@
         <input type="number" id="amount" placeholder="المبلغ">
         <select id="currency"><option value="IQD">د.ع</option><option value="USD">دولار $</option></select>
         <select id="type"><option value="وارد">وارد</option><option value="صادر">صادر</option></select>
-        <select id="method"><option value="كاش">كاش</option><option value="ماستر كارد">ماستر كارد</option><option value="زين كاش">زين كاش</option><option value="غير واصل">غير واصل</option></select>
+        <select id="method">
+            <option value="كاش">كاش</option>
+            <option value="ماستر كارد">ماستر كارد</option>
+            <option value="زين كاش">زين كاش</option>
+            <option value="غير واصل">غير واصل</option>
+            <option value="واصل مسبقاً">واصل مسبقاً</option>
+        </select>
         <button class="add-btn" id="submitBtn" onclick="processEntry()">إضافة العملية</button>
     </div>
     <table>
