@@ -9,14 +9,13 @@
     
     <style>
         :root {
-            /* حافظت على الألوان الأساسية مع إضافة لون التنبيه */
-            --primary-color: #0ea5e9; /* Sky Blue */
-            --alert-color: #f43f5e;   /* Rose/Red for Alert */
-            --secondary-color: #6366f1; /* Indigo */
+            --primary-color: #0ea5e9; 
+            --alert-color: #f43f5e;   
+            --secondary-color: #6366f1; 
             --bg-dark: #020617;
             --glass-bg: rgba(15, 23, 42, 0.75);
             --glass-border: rgba(255, 255, 255, 0.08);
-            --telegram-bg: linear-gradient(135deg, #2AABEE 0%, #229ED9 100%);
+            /* لغيت لون التليجرام لأن الزر خربان */
         }
 
         * {
@@ -29,7 +28,6 @@
 
         body {
             background-color: var(--bg-dark);
-            /* خلفية شبكية خفيفة */
             background-image: 
                 linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
@@ -45,7 +43,6 @@
             padding: 20px;
         }
 
-        /* Vignette Effect - ظلام في الزوايا */
         body::after {
             content: '';
             position: fixed;
@@ -55,7 +52,6 @@
             pointer-events: none;
         }
 
-        /* Background Circles - دوائر الخلفية المضيئة */
         .glow-spot {
             position: fixed;
             border-radius: 50%;
@@ -64,7 +60,7 @@
             opacity: 0.4;
             animation: float-bg 10s ease-in-out infinite alternate;
         }
-        /* غيرت لون الإضاءة الخلفية لتميل للأحمر الخفيف دلالة على التنبيه */
+        
         .g1 { width: 50vw; height: 50vw; background: var(--secondary-color); top: -10%; left: -10%; opacity: 0.2; }
         .g2 { width: 40vw; height: 40vw; background: var(--alert-color); bottom: -10%; right: -10%; opacity: 0.15; }
 
@@ -78,7 +74,7 @@
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid var(--glass-border);
             border-top: 1px solid rgba(255,255,255,0.1);
-            border-bottom: 1px solid rgba(244, 63, 94, 0.2); /* حدود سفلية حمراء خفيفة */
+            border-bottom: 1px solid rgba(244, 63, 94, 0.2);
             border-radius: 24px;
             box-shadow: 
                 0 25px 50px -12px rgba(0, 0, 0, 0.6),
@@ -88,7 +84,6 @@
             margin: auto;
         }
 
-        /* Icon Styles */
         .icon-box {
             position: relative;
             width: 100px;
@@ -101,7 +96,7 @@
 
         .main-icon {
             font-size: clamp(55px, 12vw, 70px);
-            background: linear-gradient(to bottom, #fff, #fda4af); /* تدرج أبيض لوردي */
+            background: linear-gradient(to bottom, #fff, #fda4af);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             filter: drop-shadow(0 0 15px rgba(244, 63, 94, 0.4));
@@ -118,7 +113,7 @@
             transform: translate(-50%, -50%);
             z-index: 1;
             border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 50%; /* شكل جمالي خلف القفل */
+            border-radius: 50%;
             padding: 20px;
         }
 
@@ -140,7 +135,6 @@
             padding: 0 15px;
         }
 
-        /* Security Line Loader */
         .loader-wrapper {
             width: 100%;
             height: 4px;
@@ -157,27 +151,61 @@
             top: 0;
             height: 100%;
             width: 30%;
-            /* تدرج لوني يوحي بالتحذير */
             background: linear-gradient(90deg, transparent, var(--alert-color), var(--primary-color));
             border-radius: 10px;
             animation: security-scan 2s ease-in-out infinite;
             box-shadow: 0 0 10px var(--alert-color);
         }
 
-        /* Social Area */
         .social-area {
             border-top: 1px solid var(--glass-border);
             padding-top: 25px;
             display: flex;
             flex-direction: column;
-            gap: 15px;
+            gap: 10px;
+            align-items: center;
+        }
+
+        /* ستايل الزر المتعطل ليبدو وكأنه خطأ سيرفر */
+        .telegram-error-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            /* خلفية توحي بالعطل - رمادي غامق جداً */
+            background: rgba(0, 0, 0, 0.2);
+            color: #64748b; /* لون نص باهت (Slate 500) */
+            padding: 14px 20px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            /* حدود مقطعة توحي بعدم الاستقرار */
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            cursor: not-allowed; 
+            pointer-events: none; /* يمنع الضغط نهائياً */
+            user-select: none;
+            direction: ltr; /* حتى الكود الانكليزي يطلع عدل */
+        }
+        
+        /* وميض خفيف جداً يوحي بالمحاولة */
+        .telegram-error-box i, .telegram-error-box span {
+            animation: pulse-error 3s infinite;
+        }
+
+        .error-subtext {
+            font-size: 0.75rem;
+            color: #475569;
+            margin-top: 0;
+            animation: text-fade 2s infinite alternate;
         }
 
         .status-badge {
             display: inline-flex;
             align-items: center;
             gap: 8px;
-            background: rgba(244, 63, 94, 0.1); /* خلفية حمراء خفيفة */
+            background: rgba(244, 63, 94, 0.1);
             color: #fda4af;
             padding: 6px 16px;
             border-radius: 50px;
@@ -187,34 +215,6 @@
             margin-bottom: 20px;
             letter-spacing: 0.5px;
         }
-
-        .telegram-btn {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-            background: var(--telegram-bg);
-            color: white;
-            padding: 14px 20px;
-            border-radius: 14px;
-            text-decoration: none;
-            font-weight: 700;
-            font-size: 1rem;
-            transition: transform 0.2s, box-shadow 0.2s;
-            overflow: hidden;
-            box-shadow: 0 8px 20px -5px rgba(34, 158, 217, 0.4);
-            border: 1px solid rgba(255,255,255,0.1);
-        }
-        
-        .telegram-btn:active { transform: scale(0.98); }
-        .telegram-btn:hover { transform: translateY(-3px); box-shadow: 0 15px 30px -8px rgba(34, 158, 217, 0.5); }
-        .telegram-btn::before {
-            content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.25), transparent);
-            transition: 0.5s;
-        }
-        .telegram-btn:hover::before { left: 100%; }
 
         /* Animations */
         @keyframes float-icon {
@@ -238,11 +238,20 @@
             100% { transform: translate(20px, 20px); }
         }
 
-        /* Responsive Fixes */
+        @keyframes pulse-error {
+            0% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.5; }
+        }
+
+        @keyframes text-fade {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
+        }
+
         @media (max-width: 380px) {
             .container { padding: 35px 20px; }
             h1 { font-size: 1.4rem; }
-            .telegram-btn { padding: 12px 15px; font-size: 0.9rem; }
             .icon-box { width: 80px; height: 80px; margin-bottom: 15px; }
         }
 
@@ -278,10 +287,13 @@
         </div>
 
         <div class="social-area">
-            <a href="https://t.me/lw22g" target="_blank" class="telegram-btn">
-                <i class="fab fa-telegram-plane"></i>
-                <span>مراسلة المالك عبر تليجرام</span>
-            </a>
+            <div class="telegram-error-box">
+                <i class="fas fa-plug-circle-xmark"></i>
+                <span style="font-family: monospace; letter-spacing: 1px;">ERR_CONNECTION_TIMED_OUT</span>
+            </div>
+            <div class="error-subtext">
+                جاري محاولة الاتصال بالخادم...
+            </div>
         </div>
     </div>
 
