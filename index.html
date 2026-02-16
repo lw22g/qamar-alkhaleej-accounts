@@ -2,12 +2,15 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>نظام حسابات شركة قمر الخليج</title>
-<link rel="icon" type="image/png" href="logo.png">
     
+    <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="logo.png">
     <link rel="shortcut icon" href="logo.png">
+    
+    <link rel="manifest" href="manifest.json">
+    
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <script type="module">
@@ -272,15 +275,15 @@
 
     <style>
         :root { 
-            --royal-green: #004d40;     /* الأخضر الملكي الأساسي */
-            --royal-hover: #00332a;     /* لون التأشير للأخضر الملكي */
-            --royal-light: #e6f0ef;     /* خلفية خفيفة جداً بلمسة خضراء */
+            --royal-green: #004d40;     
+            --royal-hover: #00332a;     
+            --royal-light: #e6f0ef;     
             
-            --bg-app: #f8fafc;          /* خلفية التطبيق رمادي فاتح جداً */
+            --bg-app: #f8fafc;          
             --bg-card: #ffffff;
             --text-main: #334155;
             --text-muted: #64748b;
-            --border-color: #cbd5e1;    /* لون الحدود واضح ومريح */
+            --border-color: #cbd5e1;    
             --border-light: #e2e8f0;
             --success: #059669;
             --danger: #dc2626;
@@ -306,13 +309,13 @@
             border-radius: 12px; 
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); 
             border: 1px solid var(--border-light);
-            border-top: 5px solid var(--royal-green); /* لمسة ملكية بأعلى الصفحة */
+            border-top: 5px solid var(--royal-green); 
         }
 
         .print-header-top { display: none; }
         
         h2.ui-title { 
-            color: var(--royal-green); /* العنوان بالأخضر الملكي */
+            color: var(--royal-green); 
             font-weight: 800; 
             margin-bottom: 25px;
             font-size: 22px;
@@ -322,7 +325,6 @@
             align-items: center;
         }
 
-        /* قسم الإدخال - SaaS Style */
         .input-section { 
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); 
@@ -353,7 +355,7 @@
         
         input:focus, select:focus { 
             border-color: var(--royal-green); 
-            box-shadow: 0 0 0 3px rgba(0, 77, 64, 0.1); /* تأثير التأشير أخضر خفيف */
+            box-shadow: 0 0 0 3px rgba(0, 77, 64, 0.1); 
         }
 
         .add-btn { 
@@ -371,12 +373,10 @@
         .add-btn:hover { background-color: var(--royal-hover); }
         .update-mode { background-color: var(--warning) !important; }
         
-        /* الجدول بخانات واضحة (Borders) */
         .table-responsive {
             overflow-x: auto;
             margin-bottom: 35px;
             border-radius: 8px;
-            /* حد خارجي للجدول بالكامل */
             border: 1px solid var(--border-color);
         }
 
@@ -387,22 +387,21 @@
             background: var(--bg-card);
         }
         
-        /* إضافة الحدود بين الخانات (Borders) مثل ما طلبت */
         th, td { 
             padding: 12px 16px; 
             text-align: right; 
             font-size: 14px; 
-            border: 1px solid var(--border-color); /* هنا سر وضوح الخانات */
+            border: 1px solid var(--border-color); 
         }
         
         th { 
-            background-color: var(--royal-light); /* خلفية خفيفة تميل للأخضر */
-            color: var(--royal-green); /* الخط أخضر ملكي */
+            background-color: var(--royal-light); 
+            color: var(--royal-green); 
             font-weight: 800; 
             font-size: 13px;
         }
         
-        tbody tr:nth-child(even) { background-color: #f8fafc; } /* تمييز الأسطر الزوجية */
+        tbody tr:nth-child(even) { background-color: #f8fafc; } 
         tbody tr:hover { background-color: #f1f5f9; }
 
         .font-medium { font-weight: 700; color: var(--royal-green); }
@@ -427,7 +426,6 @@
         .delete-btn:hover { background: #fef2f2; border-color: #fecaca; }
         .archived-tag { font-size: 12px; color: var(--text-muted); background: var(--bg-app); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-light); }
         
-        /* بطاقات الخلاصة - SaaS Dashboard Cards */
         .summary-title { color: var(--royal-green); margin-bottom: 20px; font-weight: 800; font-size: 18px; border-bottom: 1px solid var(--border-light); padding-bottom: 10px; }
         
         .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
@@ -438,9 +436,9 @@
             padding: 20px; 
             border: 1px solid var(--border-color); 
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border-top: 4px solid var(--royal-green); /* لمسة ملكية للبطاقات */
+            border-top: 4px solid var(--royal-green); 
         }
-        .summary-card.usd { border-top-color: var(--warning); } /* بطاقة الدولار مميزة باللون البرتقالي/الذهبي */
+        .summary-card.usd { border-top-color: var(--warning); } 
         
         .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .card-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; }
@@ -467,7 +465,6 @@
         .details-list li span:first-child { color: var(--text-main); font-weight: 600;}
         .details-list li span:last-child { font-weight: 700; font-family: 'Courier New', Courier, monospace; direction: ltr;}
         
-        /* الأزرار */
         .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; border-top: 1px solid var(--border-light); padding-top: 20px; }
         .btn-action { 
             padding: 10px 18px; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; 
@@ -480,7 +477,6 @@
         .btn-clear { color: var(--danger); border-color: #fca5a5; }
         .btn-clear:hover { background: #fef2f2; }
 
-        /* الأرشيف */
         .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.5); justify-content: center; align-items: center; }
         .modal-content { background-color: var(--bg-card); padding: 24px; width: 100%; max-width: 450px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border-light); border-top: 4px solid var(--royal-green); }
         .close-modal { float: left; color: var(--text-muted); font-size: 24px; cursor: pointer; line-height: 1; }
@@ -492,7 +488,6 @@
         .archive-date { font-weight: 600; font-size: 14px; color: #0f172a; }
         .archive-time { font-size: 12px; color: var(--text-muted); }
 
-        /* الطباعة */
         @media print {
             @page { size: A4 portrait; margin: 1cm; }
             body { background: white !important; padding: 0; font-size: 12px; }
@@ -682,5 +677,16 @@
     </div>
 
 </div>
+
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then((reg) => console.log('تم تسجيل التطبيق بنجاح ✅', reg))
+                .catch((err) => console.log('اكو خلل بتسجيل التطبيق ❌', err));
+        });
+    }
+</script>
+
 </body>
 </html>
