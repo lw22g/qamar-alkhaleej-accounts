@@ -3,700 +3,357 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>نظام حسابات شركة قمر الخليج</title>
+    <title>تعذر الوصول | Access Denied</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <link rel="icon" type="image/png" href="logo.png">
-    <link rel="apple-touch-icon" href="logo.png">
-    <link rel="shortcut icon" href="logo.png">
-    
-    <link rel="manifest" href="manifest.json">
-    
-    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getDatabase, ref, push, onValue, remove, update, get, set, child } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyCjlwkV9u7wFWtjhKZSeACtU5DTAbMZois",
-            authDomain: "qamar-system.firebaseapp.com",
-            databaseURL: "https://qamar-system-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "qamar-system",
-            storageBucket: "qamar-system.firebasestorage.app",
-            messagingSenderId: "409311893648",
-            appId: "1:409311893648:web:a56b3d46ad6be716312015",
-            measurementId: "G-YCEMSWFX66"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const db = getDatabase(app);
-        const dbRef = ref(db, 'transactions');
-        const archiveRef = ref(db, 'archive');
-
-        async function syncWithSheets(entryData, id, action) {
-            const scriptURL = 'https://script.google.com/macros/s/AKfycbzp1UmoUxnt2-VIPaBCLgaZ7myl2mRDo2flAhB4LMEdrAt-FqBFfypHijXt6nmWcvv8Ug/exec';
-            const payload = { ...entryData, id: id, action: action };
-            try {
-                await fetch(scriptURL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
-                });
-            } catch (error) { console.error(error); }
-        }
-
-        window.processEntry = function() {
-            const desc = document.getElementById('desc').value;
-            let amount = parseFloat(document.getElementById('amount').value);
-            const currency = document.getElementById('currency').value;
-            const type = document.getElementById('type').value;
-            const method = document.getElementById('method').value;
-            const employee = document.getElementById('employee').value;
-            const date = new Date().toLocaleDateString('ar-EG');
-
-            if (!desc || isNaN(amount)) return alert("أكمل البيانات أولاً عيني");
-            
-            let finalAmount = (currency === "IQD") ? amount * 1000 : amount;
-            const entryData = { date, desc, type, method, amount: finalAmount, currency, employee };
-
-            if (window.editKey) {
-                update(ref(db, 'transactions/' + window.editKey), entryData);
-                syncWithSheets(entryData, window.editKey, "edit");
-                window.editKey = null;
-                document.getElementById('submitBtn').innerText = "إضافة العملية";
-                document.getElementById('submitBtn').classList.remove('update-mode');
-            } else {
-                const newRef = push(dbRef, entryData);
-                syncWithSheets(entryData, newRef.key, "add");
-            }
-            document.getElementById('desc').value = "";
-            document.getElementById('amount').value = "";
-        };
-
-        onValue(dbRef, (snapshot) => { 
-            if(!window.viewingArchive) {
-                renderAll(snapshot.val()); 
-            }
-        });
-
-        window.deleteEntry = function(id) {
-            if(window.viewingArchive) return alert("لا يمكن حذف بيانات من الأرشيف");
-            if(confirm("تريد تحذف هاي العملية؟")) {
-                syncWithSheets({ date: "", desc: "", employee: "", type: "", method: "", amount: 0, currency: "" }, id, "delete");
-                remove(ref(db, 'transactions/' + id));
-            }
-        };
-
-        window.editEntry = function(id, dataStr) {
-            if(window.viewingArchive) return alert("لا يمكن تعديل بيانات الأرشيف");
-            const itm = JSON.parse(decodeURIComponent(dataStr));
-            window.editKey = id;
-            document.getElementById('desc').value = itm.desc;
-            document.getElementById('amount').value = itm.currency === "IQD" ? itm.amount / 1000 : itm.amount;
-            document.getElementById('currency').value = itm.currency;
-            document.getElementById('type').value = itm.type;
-            document.getElementById('method').value = itm.method;
-            document.getElementById('employee').value = itm.employee || "هند";
-            const btn = document.getElementById('submitBtn');
-            btn.innerText = "تحديث العملية";
-            btn.classList.add('update-mode');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        };
-
-        // --- تعديل دالة الأرشفة مع كلمة السر ---
-        window.archiveAndClear = async function() {
-            const secretPassword = "7015"; // 
-            const userInput = prompt("ادخل كلمة المرور للتصفير:");
-
-            if (userInput === null) return; 
-            if (userInput !== secretPassword) {
-                alert("كلمة المرور خطأ");
-                return;
-            }
-
-            if(!confirm("تحذير: هل أنت متأكد؟ سيتم حفظ نسخة في الأرشيف ومسح السجل الحالي.")) return;
-            const snapshot = await get(dbRef);
-            const data = snapshot.val();
-            if (!data) return alert("لا توجد بيانات للأرشفة!");
-
-            const todayStr = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            const timestamp = Date.now();
-            
-            const archiveData = {
-                savedAt: timestamp,
-                displayDate: todayStr,
-                entries: data
-            };
-
-            await push(archiveRef, archiveData);
-            await remove(dbRef);
-            
-            alert("تم حفظ التقرير في الأرشيف وتصفير السحابة بنجاح ✅");
-        };
-
-        window.openArchiveModal = function() {
-            document.getElementById('archiveModal').style.display = 'flex';
-            loadArchiveList();
-        }
-
-        window.closeArchiveModal = function() {
-            document.getElementById('archiveModal').style.display = 'none';
-        }
-
-        async function loadArchiveList() {
-            const listDiv = document.getElementById('archiveList');
-            listDiv.innerHTML = '<p style="text-align:center; color:#64748b;">جاري تحميل الأرشيف...</p>';
-            
-            const snapshot = await get(archiveRef);
-            listDiv.innerHTML = '';
-            
-            if (snapshot.exists()) {
-                const archives = snapshot.val();
-                const sortedKeys = Object.keys(archives).sort((a,b) => archives[b].savedAt - archives[a].savedAt);
-                
-                sortedKeys.forEach(key => {
-                    const item = archives[key];
-                    const date = new Date(item.savedAt).toLocaleTimeString('ar-EG');
-                    
-                    listDiv.innerHTML += `
-                        <div class="archive-item" onclick="loadArchiveDay('${key}')">
-                            <div class="archive-date">📅 ${item.displayDate}</div>
-                            <div class="archive-time">وقت الحفظ: ${date}</div>
-                        </div>
-                    `;
-                });
-            } else {
-                listDiv.innerHTML = '<p style="text-align:center; color:#64748b;">الأرشيف فارغ حالياً</p>';
-            }
-        }
-
-        window.loadArchiveDay = function(key) {
-            get(child(archiveRef, key)).then((snapshot) => {
-                if(snapshot.exists()) {
-                    const archiveData = snapshot.val();
-                    window.viewingArchive = true;
-                    document.getElementById('reportTitle').innerText = "أرشيف يوم: " + archiveData.displayDate;
-                    document.querySelector('.print-header-top h1').innerText = "نسخة أرشيفية";
-                    document.getElementById('printDateDisplay').innerText = archiveData.displayDate;
-
-                    document.querySelector('.input-section').style.display = 'none';
-                    document.querySelector('.controls').style.display = 'none';
-                    document.getElementById('archiveControls').style.display = 'flex';
-                    document.getElementById('archiveModal').style.display = 'none';
-
-                    renderAll(archiveData.entries);
-                }
-            });
-        }
-
-        window.exitArchiveMode = function() {
-            window.viewingArchive = false;
-            document.getElementById('reportTitle').innerText = "اللوحة المالية | شركة قمر الخليج";
-            document.querySelector('.print-header-top h1').innerText = "التقرير اليومي للحسابات";
-            
-            document.querySelector('.input-section').style.display = 'grid';
-            document.querySelector('.controls').style.display = 'flex';
-            document.getElementById('archiveControls').style.display = 'none';
-            
-            get(dbRef).then((snap) => renderAll(snap.val()));
-        }
-
-        window.printReport = function() {
-            if(!window.viewingArchive) {
-                const now = new Date();
-                document.getElementById('printDateDisplay').innerText = now.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-            }
-            window.print();
-        };
-
-        function renderAll(data) {
-            const body = document.getElementById('tableBody');
-            body.innerHTML = "";
-            
-            let inIQD = 0, outIQD = 0, mstIQD = 0, znIQD = 0, unpIQD = 0, cashNetIQD = 0;
-            let inUSD = 0, outUSD = 0, mstUSD = 0, znUSD = 0, unpUSD = 0, cashNetUSD = 0;
-
-            if (data) {
-                Object.keys(data).forEach((id) => {
-                    const item = data[id];
-                    const isUnpaid = item.method === "غير واصل";
-                    const isPrepaid = item.method === "واصل مسبقاً";
-                    const isMaster = item.method === "ماستر كارد";
-                    const isZain = item.method === "زين كاش";
-                    const isCash = item.method === "كاش";
-                    const itemData = encodeURIComponent(JSON.stringify(item));
-                    
-                    const actionButtons = window.viewingArchive ? 
-                        '<span class="archived-tag">مؤرشف</span>' : 
-                        `<div class="action-btns">
-                            <button class="edit-btn" onclick="editEntry('${id}', '${itemData}')">تعديل</button>
-                            <button class="delete-btn" onclick="deleteEntry('${id}')">حذف</button>
-                        </div>`;
-
-                    body.innerHTML += `<tr>
-                        <td class="text-muted">${item.date}</td>
-                        <td class="font-medium">${item.employee || '-'}</td>
-                        <td>${item.desc}</td>
-                        <td><span class="status-badge ${item.type === 'وارد' ? 'status-in' : 'status-out'}">${item.type}</span></td>
-                        <td><span class="method-text ${isUnpaid ? 'text-unpaid' : (isPrepaid ? 'text-prepaid' : '')}">${item.method}</span></td>
-                        <td class="amount-cell">${item.amount.toLocaleString()}</td>
-                        <td class="currency-column font-medium">${item.currency === 'IQD' ? 'د.ع' : '$'}</td>
-                        <td class="delete-column">${actionButtons}</td>
-                    </tr>`;
-
-                    if (!isPrepaid) {
-                        let val = (item.type === "وارد" ? item.amount : -item.amount);
-                        if (item.currency === "IQD") {
-                            if (isUnpaid) unpIQD += item.amount;
-                            else {
-                                if (item.type === "وارد") inIQD += item.amount; else outIQD += item.amount;
-                                if (isMaster) mstIQD += val;
-                                if (isZain) znIQD += val;
-                                if (isCash) cashNetIQD += val; 
-                            }
-                        } else {
-                            if (isUnpaid) unpUSD += item.amount;
-                            else {
-                                if (item.type === "وارد") inUSD += item.amount; else outUSD += item.amount;
-                                if (isMaster) mstUSD += val;
-                                if (isZain) znUSD += val;
-                                if (isCash) cashNetUSD += val; 
-                            }
-                        }
-                    }
-                });
-            }
-            updateUI('IQD', inIQD, outIQD, mstIQD, znIQD, unpIQD, cashNetIQD);
-            updateUI('USD', inUSD, outUSD, mstUSD, znUSD, unpUSD, cashNetUSD);
-        }
-
-        function updateUI(curr, inc, exp, mst, zn, unp, cashNet) {
-            const netTotal = inc - exp;
-            document.getElementById(`net${curr}_card`).innerText = netTotal.toLocaleString();
-            document.getElementById(`treasury${curr}`).innerText = cashNet.toLocaleString();
-            document.getElementById(`totalIn${curr}_card`).innerText = inc.toLocaleString();
-            document.getElementById(`totalOut${curr}_card`).innerText = exp.toLocaleString();
-            document.getElementById(`master${curr}_card`).innerText = mst.toLocaleString();
-            document.getElementById(`zain${curr}_card`).innerText = zn.toLocaleString();
-            document.getElementById(`unpaid${curr}_card`).innerText = unp.toLocaleString();
-        }
-    </script>
-
     <style>
-        :root { 
-            --royal-green: #004d40;     
-            --royal-hover: #00332a;     
-            --royal-light: #e6f0ef;     
-            
-            --bg-app: #f8fafc;          
-            --bg-card: #ffffff;
-            --text-main: #334155;
-            --text-muted: #64748b;
-            --border-color: #cbd5e1;    
-            --border-light: #e2e8f0;
-            --success: #059669;
-            --danger: #dc2626;
-            --warning: #d97706;
-        }
-        
-        * { box-sizing: border-box; outline: none; margin: 0; padding: 0; }
-        
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background-color: var(--bg-app);
-            color: var(--text-main); 
-            direction: rtl; 
-            padding: 20px;
-            font-size: 14px;
+        :root {
+            --primary-color: #0ea5e9; 
+            --alert-color: #f43f5e;   
+            --secondary-color: #6366f1; 
+            --bg-dark: #020617;
+            --glass-bg: rgba(15, 23, 42, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.08);
         }
 
-        .container { 
-            max-width: 1250px; 
-            margin: 0 auto; 
-            background: var(--bg-card);
-            padding: 30px; 
-            border-radius: 12px; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); 
-            border: 1px solid var(--border-light);
-            border-top: 5px solid var(--royal-green); 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Cairo', sans-serif;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        .print-header-top { display: none; }
-        
-        h2.ui-title { 
-            color: var(--royal-green); 
-            font-weight: 800; 
-            margin-bottom: 25px;
-            font-size: 22px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid var(--border-light);
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            color: white;
             display: flex;
             align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto; 
+            position: relative;
+            padding: 20px;
         }
 
-        .input-section { 
-            display: grid; 
-            grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); 
-            gap: 12px; 
-            background: #f1f5f9; 
-            padding: 20px; 
-            border-radius: 8px; 
-            margin-bottom: 30px; 
-            border: 1px solid var(--border-light);
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at center, transparent 0%, #020617 90%);
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .glow-spot {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(90px);
+            z-index: -2;
+            opacity: 0.4;
+            animation: float-bg 10s ease-in-out infinite alternate;
+        }
+        
+        .g1 { width: 50vw; height: 50vw; background: var(--secondary-color); top: -10%; left: -10%; opacity: 0.2; }
+        .g2 { width: 40vw; height: 40vw; background: var(--alert-color); bottom: -10%; right: -10%; opacity: 0.15; }
+
+        .container {
+            text-align: center;
+            padding: 50px 30px;
+            width: 100%;
+            max-width: 480px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            border-top: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(244, 63, 94, 0.2);
+            border-radius: 24px;
+            box-shadow: 
+                0 25px 50px -12px rgba(0, 0, 0, 0.6),
+                inset 0 0 20px rgba(255,255,255,0.02);
+            position: relative;
+            animation: card-entry 0.8s cubic-bezier(0.2, 0.8, 0.2, 1);
+            margin: auto;
+        }
+
+        .icon-box {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .main-icon {
+            font-size: clamp(55px, 12vw, 70px);
+            background: linear-gradient(to bottom, #fff, #fda4af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 0 15px rgba(244, 63, 94, 0.4));
+            animation: float-icon 4s ease-in-out infinite;
+            z-index: 2;
+        }
+
+        .shield-icon {
+            font-size: clamp(80px, 18vw, 100px);
+            color: rgba(255, 255, 255, 0.03);
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1;
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 50%;
+            padding: 20px;
+        }
+
+        /* كلاس مشترك للانتقال الناعم للنص والعنوان */
+        .dynamic-text {
+            transition: opacity 0.5s ease-in-out;
+            opacity: 1;
+        }
+
+        /* كلاس للإخفاء أثناء التبديل */
+        .fade-out {
+            opacity: 0 !important;
+        }
+
+        h1#dynamic-title {
+            font-size: clamp(1.4rem, 5vw, 2rem); 
+            margin-bottom: 15px;
+            font-weight: 800;
+            color: white;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            line-height: 1.3;
+            min-height: 45px; /* ارتفاع ثابت لمنع القفز */
+        }
+
+        p#dynamic-msg {
+            font-size: clamp(0.9rem, 3vw, 1.05rem);
+            color: #cbd5e1;
+            margin-bottom: 30px;
+            line-height: 1.7;
+            font-weight: 400;
+            padding: 0 15px;
+            min-height: 80px; /* ارتفاع ثابت */
+            display: flex;
+            align-items: flex-start; /* تغيير المحاذاة */
+            justify-content: center;
+        }
+
+        .loader-wrapper {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 30px;
+            position: relative;
+        }
+
+        .loader-bar {
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 30%;
+            background: linear-gradient(90deg, transparent, var(--alert-color), var(--primary-color));
+            border-radius: 10px;
+            animation: security-scan 2s ease-in-out infinite;
+            box-shadow: 0 0 10px var(--alert-color);
+        }
+
+        .social-area {
+            border-top: 1px solid var(--glass-border);
+            padding-top: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
             align-items: center;
         }
 
-        @media (min-width: 1024px) {
-            .input-section { grid-template-columns: 1fr 2fr 1.2fr 1fr 1fr auto; }
-        }
-
-        input, select { 
-            font-family: 'Cairo', sans-serif; 
-            padding: 10px 12px; 
-            border: 1px solid var(--border-color); 
-            border-radius: 6px; 
-            font-size: 14px; 
-            color: var(--text-main);
-            background: var(--bg-card);
-            transition: border-color 0.2s, box-shadow 0.2s;
+        .telegram-error-box {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
             width: 100%;
+            background: rgba(0, 0, 0, 0.2);
+            color: #64748b;
+            padding: 14px 20px;
+            border-radius: 14px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            border: 1px dashed rgba(255, 255, 255, 0.1);
+            cursor: not-allowed; 
+            pointer-events: none;
+            user-select: none;
+            direction: ltr; 
         }
         
-        input:focus, select:focus { 
-            border-color: var(--royal-green); 
-            box-shadow: 0 0 0 3px rgba(0, 77, 64, 0.1); 
+        .telegram-error-box i, .telegram-error-box span {
+            animation: pulse-error 3s infinite;
         }
 
-        .add-btn { 
-            background-color: var(--royal-green);
-            color: white; 
-            border: none; 
-            cursor: pointer; 
-            font-weight: 600; 
-            font-size: 14px;
-            padding: 10px 20px;
-            border-radius: 6px;
-            transition: background-color 0.2s; 
-            font-family: 'Cairo', sans-serif;
-        }
-        .add-btn:hover { background-color: var(--royal-hover); }
-        .update-mode { background-color: var(--warning) !important; }
-        
-        .table-responsive {
-            overflow-x: auto;
-            margin-bottom: 35px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
+        .error-subtext {
+            font-size: 0.75rem;
+            color: #475569;
+            margin-top: 0;
+            animation: text-fade 2s infinite alternate;
         }
 
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            white-space: nowrap;
-            background: var(--bg-card);
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(244, 63, 94, 0.1);
+            color: #fda4af;
+            padding: 6px 16px;
+            border-radius: 50px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            border: 1px solid rgba(244, 63, 94, 0.2);
+            margin-bottom: 20px;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes float-icon {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
         }
         
-        th, td { 
-            padding: 12px 16px; 
-            text-align: right; 
-            font-size: 14px; 
-            border: 1px solid var(--border-color); 
+        @keyframes security-scan {
+            0% { left: -50%; width: 20%; opacity: 0.3; }
+            50% { width: 50%; opacity: 1; }
+            100% { left: 110%; width: 20%; opacity: 0.3; }
         }
-        
-        th { 
-            background-color: var(--royal-light); 
-            color: var(--royal-green); 
-            font-weight: 800; 
-            font-size: 13px;
+
+        @keyframes card-entry {
+            0% { opacity: 0; transform: translateY(20px) scale(0.96); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
         }
-        
-        tbody tr:nth-child(even) { background-color: #f8fafc; } 
-        tbody tr:hover { background-color: #f1f5f9; }
 
-        .font-medium { font-weight: 700; color: var(--royal-green); }
-        .text-muted { color: var(--text-muted); font-size: 13px; }
-        .amount-cell { font-weight: 700; font-family: 'Courier New', Courier, monospace; font-size: 15px; text-align: left; direction: ltr;}
-        
-        .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
-        .status-in { background: #dcfce7; color: var(--success); }
-        .status-out { background: #fee2e2; color: var(--danger); }
-
-        .method-text { font-weight: 500; }
-        .text-unpaid { color: var(--warning); font-weight: 700; }
-        .text-prepaid { color: var(--text-muted); font-style: italic; }
-        
-        .action-btns { display: flex; gap: 6px; }
-        .edit-btn, .delete-btn { 
-            border: 1px solid var(--border-color); cursor: pointer; padding: 4px 10px; border-radius: 4px; font-weight: 600; font-size: 12px; font-family: 'Cairo', sans-serif; background: var(--bg-card); transition: 0.2s;
+        @keyframes float-bg {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(20px, 20px); }
         }
-        .edit-btn { color: var(--royal-green); }
-        .edit-btn:hover { background: var(--royal-light); border-color: var(--royal-green); }
-        .delete-btn { color: var(--danger); }
-        .delete-btn:hover { background: #fef2f2; border-color: #fecaca; }
-        .archived-tag { font-size: 12px; color: var(--text-muted); background: var(--bg-app); padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border-light); }
-        
-        .summary-title { color: var(--royal-green); margin-bottom: 20px; font-weight: 800; font-size: 18px; border-bottom: 1px solid var(--border-light); padding-bottom: 10px; }
-        
-        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
-        
-        .summary-card { 
-            background: var(--bg-card); 
-            border-radius: 8px; 
-            padding: 20px; 
-            border: 1px solid var(--border-color); 
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border-top: 4px solid var(--royal-green); 
+
+        @keyframes pulse-error {
+            0% { opacity: 0.5; }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.5; }
         }
-        .summary-card.usd { border-top-color: var(--warning); } 
-        
-        .card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .card-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; }
-        .currency-tag { font-size: 12px; font-weight: 700; color: var(--royal-green); background: var(--royal-light); padding: 4px 8px; border-radius: 4px; border: 1px solid #b2dfdb; }
-        .usd .currency-tag { color: var(--warning); background: #fffbeb; border-color: #fde68a; }
 
-        .net-wrapper { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
-        .net-section { padding: 15px; border-radius: 6px; border: 1px solid var(--border-light); background: var(--bg-app); }
-        .net-section.highlight { background: #f0fdf4; border-color: #bbf7d0; }
-        
-        .net-label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 6px; font-weight: 600; }
-        .net-value { display: block; font-size: 22px; font-weight: 800; color: #0f172a; direction: ltr; text-align: left;}
-        .treasury-val { color: var(--success); }
-
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--border-light); }
-        .stat-item { padding: 10px; border: 1px solid var(--border-light); border-radius: 6px; background: var(--bg-app); }
-        .stat-label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 4px; font-weight: 600; }
-        .stat-value { font-weight: 800; font-size: 16px; direction: ltr; text-align: left; display: block;}
-        .stat-item.in .stat-value { color: var(--success); }
-        .stat-item.out .stat-value { color: var(--danger); }
-
-        .details-list { list-style: none; font-size: 13px; }
-        .details-list li { display: flex; justify-content: space-between; padding: 10px 15px; border: 1px solid var(--border-light); margin-bottom: 6px; border-radius: 6px; background: var(--bg-card); }
-        .details-list li span:first-child { color: var(--text-main); font-weight: 600;}
-        .details-list li span:last-child { font-weight: 700; font-family: 'Courier New', Courier, monospace; direction: ltr;}
-        
-        .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 30px; border-top: 1px solid var(--border-light); padding-top: 20px; }
-        .btn-action { 
-            padding: 10px 18px; border: 1px solid var(--border-color); border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; 
-            font-family: 'Cairo', sans-serif; background: var(--bg-card); color: var(--text-main); transition: 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        @keyframes text-fade {
+            from { opacity: 0.6; }
+            to { opacity: 1; }
         }
-        .btn-action:hover { background: #f1f5f9; border-color: #94a3b8; }
-        
-        .btn-print { border-color: var(--royal-green); color: var(--royal-green); }
-        .btn-print:hover { background: var(--royal-light); }
-        .btn-clear { color: var(--danger); border-color: #fca5a5; }
-        .btn-clear:hover { background: #fef2f2; }
 
-        .modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.5); justify-content: center; align-items: center; }
-        .modal-content { background-color: var(--bg-card); padding: 24px; width: 100%; max-width: 450px; border-radius: 12px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border-light); border-top: 4px solid var(--royal-green); }
-        .close-modal { float: left; color: var(--text-muted); font-size: 24px; cursor: pointer; line-height: 1; }
-        .close-modal:hover { color: #0f172a; }
-        
-        .archive-list { max-height: 300px; overflow-y: auto; margin-top: 20px; }
-        .archive-item { padding: 12px 15px; border: 1px solid var(--border-light); margin-bottom: 8px; border-radius: 6px; cursor: pointer; transition: 0.2s; display: flex; justify-content: space-between; background: var(--bg-app); }
-        .archive-item:hover { border-color: var(--royal-green); background: var(--royal-light); }
-        .archive-date { font-weight: 600; font-size: 14px; color: #0f172a; }
-        .archive-time { font-size: 12px; color: var(--text-muted); }
+        @media (max-width: 380px) {
+            .container { padding: 35px 20px; }
+            h1 { font-size: 1.4rem; }
+            .icon-box { width: 80px; height: 80px; margin-bottom: 15px; }
+        }
 
-        @media print {
-            @page { size: A4 portrait; margin: 1cm; }
-            body { background: white !important; padding: 0; font-size: 12px; }
-            .container { box-shadow: none; border: none; width: 100%; padding: 0; }
-            .input-section, .controls, .delete-column, .ui-title, .action-btns, .btn-archive, #archiveControls { display: none !important; }
-            .currency-column { display: none !important; }
-
-            .print-header-top { display: flex !important; flex-direction: column; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            .print-header-top h1 { margin: 0; font-size: 20px; font-weight: 800; color: black; }
-            .print-header-top p { margin: 4px 0 0 0; color: black; font-weight: 600; }
-            
-            .table-responsive { border: none; margin-bottom: 20px; overflow: visible; }
-            table { border: 2px solid #000 !important; }
-            th, td { border: 1px solid #000 !important; color: #000 !important; padding: 6px; }
-            th { background-color: #f3f3f3 !important; } 
-            
-            .status-badge { padding: 0; background: none !important; color: #000 !important; }
-            
-            .summary-title { font-size: 16px; border-bottom: 1px solid #000; margin-bottom: 10px; color: black; }
-            .summary-grid { display: grid !important; grid-template-columns: 1fr 1fr; gap: 15px; page-break-inside: avoid; }
-            .summary-card { border: 2px solid #000 !important; padding: 10px !important; border-radius: 0; box-shadow: none !important; }
-            
-            .card-header h3 { font-size: 14px; }
-            .currency-tag { display: none; }
-            
-            .net-wrapper { gap: 10px; margin-bottom: 10px; }
-            .net-section { padding: 6px !important; border: 1px solid #000 !important; background: transparent !important; }
-            .net-label { font-size: 10px !important; color: #000 !important; }
-            .net-value { font-size: 14px !important; color: black !important; }
-            
-            .stats-grid { gap: 10px !important; margin-bottom: 10px !important; border-bottom: 1px solid #000; padding-bottom: 10px; }
-            .stat-item { border: 1px solid #000 !important; padding: 4px !important; }
-            .stat-label { color: black !important; font-size: 10px !important; }
-            .stat-item .stat-value { color: #000 !important; font-size: 12px !important; }
-            
-            .details-list li { border: 1px solid #000 !important; padding: 4px 8px !important; margin-bottom: 2px !important; }
-            .details-list li span { color: #000 !important; }
+        @media (max-height: 500px) and (orientation: landscape) {
+            body { padding: 10px; align-items: flex-start; }
+            .container { margin-top: 20px; margin-bottom: 20px; padding: 30px 20px; }
         }
     </style>
 </head>
 <body>
-<div class="container">
-    <div class="print-header-top">
-        <h1>التقرير اليومي للحسابات - شركة قمر الخليج</h1>
-        <p id="printDateDisplay"></p>
-    </div>
-    
-    <h2 class="ui-title" id="reportTitle">اللوحة المالية | شركة قمر الخليج</h2>
-    
-    <div class="input-section">
-        <select id="employee">
-            <option value="هند">هند</option>
-            <option value="غيث">غيث</option>
-            <option value="يونس">يونس</option>
-            <option value="نبأ">نبأ</option>
-        </select>
-        <input type="text" id="desc" placeholder="وصف العملية">
-        <input type="number" id="amount" placeholder="المبلغ">
-        <select id="currency">
-            <option value="IQD">د.ع</option>
-            <option value="USD">$ دولار</option>
-        </select>
-        <select id="type">
-            <option value="وارد">وارد</option>
-            <option value="صادر">صادر</option>
-        </select>
-        <select id="method">
-            <option value="كاش">كاش</option>
-            <option value="ماستر كارد">ماستر كارد</option>
-            <option value="زين كاش">زين كاش</option>
-            <option value="غير واصل">غير واصل</option>
-            <option value="واصل مسبقاً">واصل مسبقاً</option>
-        </select>
-        <button class="add-btn" id="submitBtn" onclick="processEntry()">إضافة العملية</button>
-    </div>
 
-    <div class="table-responsive">
-        <table>
-            <thead>
-                <tr>
-                    <th>التاريخ</th>
-                    <th>الموظف</th>
-                    <th>الوصف</th>
-                    <th>النوع</th>
-                    <th>الطريقة</th>
-                    <th>المبلغ</th>
-                    <th class="currency-column">العملة</th>
-                    <th class="delete-column">الإجراءات</th>
-                </tr>
-            </thead>
-            <tbody id="tableBody"></tbody>
-        </table>
-    </div>
+    <div class="glow-spot g1"></div>
+    <div class="glow-spot g2"></div>
 
-    <h3 class="summary-title">الخلاصة المالية</h3>
-    
-    <div class="summary-grid">
-        <div class="summary-card iqd">
-            <div class="card-header">
-                <h3>صندوق الدينار العراقي</h3>
-                <span class="currency-tag">IQD</span>
-            </div>
-            
-            <div class="net-wrapper">
-                <div class="net-section">
-                    <span class="net-label">الصافي الكلي</span>
-                    <span class="net-value" id="netIQD_card">0</span>
-                </div>
-                <div class="net-section highlight">
-                    <span class="net-label">صافي الخزينة (كاش)</span>
-                    <span class="net-value treasury-val" id="treasuryIQD">0</span>
-                </div>
-            </div>
+    <div class="container">
+        
+        <div class="icon-box">
+            <i class="fas fa-shield-halved shield-icon"></i>
+            <i class="fas fa-lock main-icon"></i>
+        </div>
+        
+        <span class="status-badge">
+            <i class="fas fa-hand-paper"></i> وصول محدد | Restricted
+        </span>
 
-            <div class="stats-grid">
-                <div class="stat-item in">
-                    <span class="stat-label">إجمالي الوارد</span>
-                    <span class="stat-value" id="totalInIQD_card">0</span>
-                </div>
-                <div class="stat-item out">
-                    <span class="stat-label">إجمالي الصادر</span>
-                    <span class="stat-value" id="totalOutIQD_card">0</span>
-                </div>
-            </div>
-            
-            <ul class="details-list">
-                <li><span>رصيد ماستر كارد</span> <span id="masterIQD_card">0</span></li>
-                <li><span>رصيد زين كاش</span> <span id="zainIQD_card">0</span></li>
-                <li><span>الديون (غير واصل)</span> <span id="unpaidIQD_card">0</span></li>
-            </ul>
+        <h1 id="dynamic-title" class="dynamic-text">عذراً، الوصول غير متاح</h1>
+        
+        <p id="dynamic-msg" class="dynamic-text">
+            لا تمتلك الصلاحيات الكافية لعرض هذا المحتوى حالياً. يرجى التواصل مع مالك الموقع لطلب تفعيل الموقع.
+        </p>
+
+        <div class="loader-wrapper">
+            <div class="loader-bar"></div>
         </div>
 
-        <div class="summary-card usd">
-            <div class="card-header">
-                <h3>صندوق الدولار الأمريكي</h3>
-                <span class="currency-tag">USD</span>
+        <div class="social-area">
+            <div class="telegram-error-box">
+                <i class="fas fa-plug-circle-xmark"></i>
+                <span style="font-family: monospace; letter-spacing: 1px;">ERR_CONNECTION_TIMED_OUT</span>
             </div>
-            
-            <div class="net-wrapper">
-                <div class="net-section">
-                    <span class="net-label">الصافي الكلي</span>
-                    <span class="net-value" id="netUSD_card">0</span>
-                </div>
-                <div class="net-section highlight">
-                    <span class="net-label">صافي الخزينة (كاش)</span>
-                    <span class="net-value treasury-val" id="treasuryUSD">0</span>
-                </div>
+            <div class="error-subtext">
+                جاري محاولة الاتصال بالخادم...
             </div>
-
-            <div class="stats-grid">
-                <div class="stat-item in">
-                    <span class="stat-label">إجمالي الوارد</span>
-                    <span class="stat-value" id="totalInUSD_card">0</span>
-                </div>
-                <div class="stat-item out">
-                    <span class="stat-label">إجمالي الصادر</span>
-                    <span class="stat-value" id="totalOutUSD_card">0</span>
-                </div>
-            </div>
-            
-            <ul class="details-list">
-                <li><span>رصيد ماستر كارد</span> <span id="masterUSD_card">0</span></li>
-                <li><span>رصيد زين كاش</span> <span id="zainUSD_card">0</span></li>
-                <li><span>الديون (غير واصل)</span> <span id="unpaidUSD_card">0</span></li>
-            </ul>
         </div>
     </div>
 
-    <div class="controls">
-        <button class="btn-action btn-archive" onclick="openArchiveModal()">سجل الأرشيف</button>
-        <button class="btn-action btn-print" onclick="printReport()">طباعة التقرير</button>
-        <button class="btn-action btn-clear" onclick="archiveAndClear()">أرشفة وتصفير اليوم</button>
-    </div>
+    <script>
+        const titleElement = document.getElementById('dynamic-title');
+        const msgElement = document.getElementById('dynamic-msg');
+        
+        // المحتوى العربي
+        const arTitle = "عذراً، الوصول غير متاح";
+        const arMsg = "لا تمتلك الصلاحيات الكافية لعرض هذا المحتوى حالياً. يرجى التواصل مع مالك الموقع لطلب تفعيل الموقع.";
+        
+        // المحتوى الإنجليزي
+        const enTitle = "Sorry, Access Denied";
+        const enMsg = "You do not have sufficient permissions to access this content. Please contact the site owner for activation.";
+        
+        let isArabic = true;
 
-    <div class="controls" id="archiveControls" style="display:none">
-        <button class="btn-action btn-print" onclick="printReport()">طباعة الأرشيف</button>
-        <button class="btn-action" onclick="exitArchiveMode()">الرجوع للنظام الحالي</button>
-    </div>
+        setInterval(() => {
+            // 1. نبدأ عملية التلاشي للعنصرين
+            titleElement.classList.add('fade-out');
+            msgElement.classList.add('fade-out');
 
-    <div id="archiveModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeArchiveModal()">&times;</span>
-            <h3 style="margin-bottom: 5px; font-size: 16px; color: var(--royal-green);">سجل الأيام المؤرشفة</h3>
-            <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">اختر يوماً لعرض التفاصيل</p>
-            <div id="archiveList" class="archive-list"></div>
-        </div>
-    </div>
+            // 2. بعد نص ثانية نغير المحتوى
+            setTimeout(() => {
+                if (isArabic) {
+                    // تحويل للانجليزي
+                    titleElement.innerText = enTitle;
+                    msgElement.innerText = enMsg;
+                    
+                    titleElement.style.direction = "ltr";
+                    msgElement.style.direction = "ltr";
+                } else {
+                    // تحويل للعربي
+                    titleElement.innerText = arTitle;
+                    msgElement.innerText = arMsg;
+                    
+                    titleElement.style.direction = "rtl";
+                    msgElement.style.direction = "rtl";
+                }
+                isArabic = !isArabic; 
+                
+                // إظهار النص الجديد
+                titleElement.classList.remove('fade-out');
+                msgElement.classList.remove('fade-out');
 
-</div>
+            }, 500); // وقت التلاشي
 
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then((reg) => console.log('تم تسجيل التطبيق بنجاح ✅', reg))
-                .catch((err) => console.log('اكو خلل بتسجيل التطبيق ❌', err));
-        });
-    }
-</script>
+        }, 5000); // التبديل كل 5 ثواني
+    </script>
 
 </body>
 </html>
