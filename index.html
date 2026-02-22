@@ -104,7 +104,17 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         };
 
+        // --- تعديل دالة الأرشفة مع كلمة السر ---
         window.archiveAndClear = async function() {
+            const secretPassword = "7015"; // 
+            const userInput = prompt("ادخل كلمة المرور للتصفير:");
+
+            if (userInput === null) return; 
+            if (userInput !== secretPassword) {
+                alert("كلمة المرور خطأ");
+                return;
+            }
+
             if(!confirm("تحذير: هل أنت متأكد؟ سيتم حفظ نسخة في الأرشيف ومسح السجل الحالي.")) return;
             const snapshot = await get(dbRef);
             const data = snapshot.val();
@@ -542,7 +552,7 @@
             <option value="هند">هند</option>
             <option value="غيث">غيث</option>
             <option value="يونس">يونس</option>
-<option value="نبأ">نبأ</option>
+            <option value="نبأ">نبأ</option>
         </select>
         <input type="text" id="desc" placeholder="وصف العملية">
         <input type="number" id="amount" placeholder="المبلغ">
